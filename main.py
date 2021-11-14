@@ -1,21 +1,23 @@
 import numpy as np
-# https://github.com/scipy/scipy/blob/v1.7.1/scipy/fft/_basic.py#L23-L164
+import binascii
 from scipy.fft import fft as sc_fft
 from implementations import dft, fft
 
 np.set_printoptions(precision=2, suppress=True)  # for compact output
 
+print("\033[96mINFO\033[0m IFFT")
+
 A = np.random.random(4)
 B = np.random.random(4)
 
-print('A', A)
-print('B', B)
+print("\033[96mINFO\033[0m A =", A)
+print("\033[96mINFO\033[0m B =", B)
 
 A_dft = dft(A)
 B_dft = dft(B)
 
-print('A_dft', A_dft)
-print('B_dft', B_dft)
+print("\033[96mINFO\033[0m A_dft =", A_dft)
+print("\033[96mINFO\033[0m B_dft =", B_dft)
 
 if (np.allclose(A_dft, np.fft.fft(A)) and np.allclose(B_dft, np.fft.fft(B))):
     print("\033[92mPASSED\033[0m DFT")
@@ -25,8 +27,8 @@ else:
 A_fft = fft(A)
 B_fft = fft(B)
 
-print('A_fft', A_fft)
-print('B_fft', B_fft)
+print("\033[96mINFO\033[0m A_fft =", A_fft)
+print("\033[96mINFO\033[0m B_fft =", B_fft)
 
 
 if (np.allclose(A_fft, np.fft.fft(A)) and np.allclose(B_fft, np.fft.fft(B))):
@@ -36,8 +38,8 @@ else:
 
 C = np.multiply(A_fft, B_fft)
 
-print("C = pointwise_multiply( A_fft, B_fft )")
-print("C", C)
+print("\033[96mINFO\033[0m C = pointwise_multiply( A_fft, B_fft )")
+print("\033[96mINFO\033[0m C =", C)
 
 import rsa
  
@@ -54,22 +56,31 @@ message = C
 # string with public key string should be
 # encode to byte string before encryption
 # with encode method
-encMessage = rsa.encrypt(message.tobytes(),
+C_encrypted = rsa.encrypt(message.tobytes(),
                         publicKey)
 
-print("original C: ", message, message.dtype)
-print("encrypted C: ", encMessage)
+print("\033[96mINFO\033[0m C_encrypted =", binascii.hexlify(C_encrypted))
 
 # the encrypted message can be decrypted
 # with ras.decrypt method and private key
 # decrypt method returns encoded byte string,
 # use decode method to convert it to string
 # public key cannot be used for decryption
-decMessage = np.frombuffer(rsa.decrypt(encMessage, privateKey), dtype=np.complex128)
+C_decrypted = np.frombuffer(rsa.decrypt(C_encrypted, privateKey), dtype=np.complex128)
 
-print("decrypted C: ", decMessage)
+print("\033[96mINFO\033[0m C_decrypted =", C_decrypted)
 
-if np.allclose(C, decMessage):
+if np.allclose(C, C_decrypted):
     print("\033[92mPASSED\033[0m RSA Encyption + Decryption")
 else:
     print("\033[91mFAILED\033[0m RSA Encyption + Decryption")
+
+
+# TODO : Inverse FFT
+A_ifft = np.zeros_like(A)
+B_ifft = np.zeros_like(B)
+
+if np.allclose(A, A_ifft) and np.allclose(A, A_ifft):
+    print("\033[92mPASSED\033[0m IFFT")
+else:
+    print("\033[91mFAILED\033[0m IFFT")
