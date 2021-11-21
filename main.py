@@ -1,7 +1,7 @@
 import numpy as np
 import binascii
 from scipy.fft import fft as sc_fft
-from implementations import dft, fft
+from implementations import dft, fft, ifft, ifft2
 
 np.set_printoptions(precision=2, suppress=True)  # for compact output
 
@@ -80,7 +80,13 @@ else:
 A_ifft = np.zeros_like(A)
 B_ifft = np.zeros_like(B)
 
-if np.allclose(A, A_ifft) and np.allclose(A, A_ifft):
+A_ifft = ifft(A_fft)
+B_ifft = ifft(B_fft)
+
+print(A)
+print(A_ifft)
+
+if np.allclose(A, A_ifft) and np.allclose(B, B_ifft):
     print("\033[92mPASSED\033[0m IFFT")
 else:
     print("\033[91mFAILED\033[0m IFFT")
