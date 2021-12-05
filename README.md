@@ -1,3 +1,7 @@
+# Report
+
+Open the following file to view our report : [UE19CS311_Adv_Alg_15Oct21.pdf](UE19CS311_Adv_Alg_15Oct21.pdf)
+
 # Fast Polynomial Multiplication with DFT/FFT implementation, RSA Encryption, Image compression (20 Marks)
 
 1. (Done) Implement 1-D DFT ,on coefficient vectors of two polynomials A(x), B(x) by multiplication of Vandermonde matrix. ( O(n 2 ) - Complexity)
