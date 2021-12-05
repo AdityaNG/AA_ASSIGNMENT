@@ -8,6 +8,8 @@ import numpy as np
 import binascii
 import random
 
+import math
+from Crypto.Util import number
 
 def gcd(a, b):
     """
@@ -35,157 +37,115 @@ def xgcd(a, b):
     return a, old_x, old_y
 
 def chooseE(totient):
-    """
-    Chooses a random number, 1 < e < totient, and checks whether or not it is 
-    coprime with the totient, that is, gcd(e, totient) = 1
-    """
-    while (True):
-        e = random.randrange(2, totient)
+    for i in range(3, totient, 2):
+        if (math.gcd(i, totient) == 1):
+            return i
 
-        if (gcd(e, totient) == 1):
-            return e
-
-def chooseKeys():
-    """
-    Selects two random prime numbers from a list of prime numbers which has 
-    values that go up to 100k. It creates a text file and stores the two 
-    numbers there where they can be used later. Using the prime numbers, 
-    it also computes and stores the public and private keys in two separate 
-    files.
-    """
-
-    # choose two random numbers within the range of lines where 
-    # the prime numbers are not too small and not too big
-    rand1 = random.randint(100, 300)
-    rand2 = random.randint(100, 300)
-
-    # store the txt file of prime numbers in a python list
-    fo = open('primes-to-100k.txt', 'r')
-    lines = fo.read().splitlines()
-    fo.close()
-
-    # store our prime numbers in these variables
-    prime1 = int(lines[rand1])
-    prime2 = int(lines[rand2])
-
-    # compute n, totient, e
+def chooseKeys(bits=64):
+    #bits = int(input("Enter number of bits in RSA key: "))
+    bits >>= 1
+    # prime1 = number.getPrime(bits)
+    # prime2 = number.getPrime(bits)
+    prime1 = getPrime(bits)
+    prime2 = getPrime(bits)
+    while (prime2 == prime1):
+        # prime2 = number.getPrime(bits)
+        prime2 = getPrime(bits)
     n = prime1 * prime2
     totient = (prime1 - 1) * (prime2 - 1)
     e = chooseE(totient)
+    _, x, y = xgcd(e, totient)
+    d = ((x + totient) % totient)
 
-    # compute d, 1 < d < totient such that ed = 1 (mod totient)
-    # e and d are inverses (mod totient)
-    gcd, x, y = xgcd(e, totient)
+    return {'public_key': (e, n), 'private_key': (d, n)}
 
-    # make sure d is positive
-    if (x < 0):
-        d = x + totient
-    else:
-        d = x
+def encrypt(message, key):
+    message = str(message)
 
-    # write the public keys n and e to a file
-    f_public = open('public_keys.txt', 'w')
-    f_public.write(str(n) + '\n')
-    f_public.write(str(e) + '\n')
-    f_public.close()
+    e, n = key
+    encrypted_blocks = []
 
-    f_private = open('private_keys.txt', 'w')
-    f_private.write(str(n) + '\n')
-    f_private.write(str(d) + '\n')
-    f_private.close()
-    
-    return n, e, d
+    for i in message:
+        encrypted_blocks.append(str(binary_exponentiation(ord(i), e, n)))
 
-def encrypt(message, file_name = 'public_keys.txt', block_size = 2):
-    """
-    Encrypts a message (string) by raising each character's ASCII value to the 
-    power of e and taking the modulus of n. Returns a string of numbers.
-    file_name refers to file where the public key is located. If a file is not 
-    provided, it assumes that we are encrypting the message using our own 
-    public keys. Otherwise, it can use someone else's public key, which is 
-    stored in a different file.
-    block_size refers to how many characters make up one group of numbers in 
-    each index of encrypted_blocks.
-    """
+    encrypted_message = " ".join(encrypted_blocks)
 
-    try:
-        fo = open(file_name, 'r')
+    return encrypted_message
 
-    # check for the possibility that the user tries to encrypt something
-    # using a public key that is not found
-    except FileNotFoundError:
-        print('That file is not found.')
-    else:
-        n = int(fo.readline())
-        e = int(fo.readline())
-        fo.close()
+def decrypt(blocks, key):
+    d, n = key
 
-        encrypted_blocks = []
-        ciphertext = -1
-
-        if (len(message) > 0):
-            # initialize ciphertext to the ASCII of the first character of message
-            ciphertext = ord(message[0])
-
-        for i in range(1, len(message)):
-            # add ciphertext to the list if the max block size is reached
-            # reset ciphertext so we can continue adding ASCII codes
-            if (i % block_size == 0):
-                encrypted_blocks.append(ciphertext)
-                ciphertext = 0
-
-            # multiply by 1000 to shift the digits over to the left by 3 places
-            # because ASCII codes are a max of 3 digits in decimal
-            ciphertext = ciphertext * 1000 + ord(message[i])
-
-        # add the last block to the list
-        encrypted_blocks.append(ciphertext)
-
-        # encrypt all of the numbers by taking it to the power of e
-        # and modding it by n
-        for i in range(len(encrypted_blocks)):
-            encrypted_blocks[i] = str((encrypted_blocks[i]**e) % n)
-
-        # create a string from the numbers
-        encrypted_message = " ".join(encrypted_blocks)
-
-        return encrypted_message
-
-def decrypt(blocks, block_size = 2):
-    """
-    Decrypts a string of numbers by raising each number to the power of d and 
-    taking the modulus of n. Returns the message as a string.
-    block_size refers to how many characters make up one group of numbers in
-    each index of blocks.
-    """
-
-    fo = open('private_keys.txt', 'r')
-    n = int(fo.readline())
-    d = int(fo.readline())
-    fo.close()
-
-    # turns the string into a list of ints
     list_blocks = blocks.split(' ')
-    int_blocks = []
-
-    for s in list_blocks:
-        int_blocks.append(int(s))
-
     message = ""
+    for i in range(len(list_blocks)):
+        message += chr(binary_exponentiation(int(list_blocks[i]), d, n))
 
-    # converts each int in the list to block_size number of characters
-    # by default, each int represents two characters
-    for i in range(len(int_blocks)):
-        # decrypt all of the numbers by taking it to the power of d
-        # and modding it by n
-        int_blocks[i] = (int_blocks[i]**d) % n
-        
-        tmp = ""
-        # take apart each block into its ASCII codes for each character
-        # and store it in the message string
-        for c in range(block_size):
-            tmp = chr(int_blocks[i] % 1000) + tmp
-            int_blocks[i] //= 1000
-        message += tmp
+    return eval(message)
 
-    return message
+    
+def nBitRandom(n):
+    start = binary_exponentiation(2, n - 1, -1)
+    return random.randrange(start+1, 2*start - 1)
+
+def getLowLevelPrime(n):
+    while True:
+        pc = nBitRandom(n)
+        for divisor in first_primes_list:
+            if pc % divisor == 0 and divisor**2 <= pc:
+                break
+        else: return pc
+
+def isMillerRabinPassed(mrc):
+    maxDivisionsByTwo = 0
+    ec = mrc-1
+    while ec % 2 == 0:
+        ec >>= 1
+        maxDivisionsByTwo += 1
+    assert(2**maxDivisionsByTwo * ec == mrc-1)
+
+    def trialComposite(round_tester):
+        if pow(round_tester, ec, mrc) == 1:
+            return False
+        for i in range(maxDivisionsByTwo):
+            if pow(round_tester, 2**i * ec, mrc) == mrc-1:
+                return False
+        return True
+    numberOfRabinTrials = 20
+    for i in range(numberOfRabinTrials):
+        round_tester = random.randrange(2, mrc)
+        if trialComposite(round_tester):
+            return False
+    return True
+
+def getPrime(n):
+    while(True):
+        prime_candidate = getLowLevelPrime(n)
+        if not isMillerRabinPassed(prime_candidate):
+            continue
+        else:
+            return prime_candidate
+
+first_primes_list = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
+                     31, 37, 41, 43, 47, 53, 59, 61, 67,
+                     71, 73, 79, 83, 89, 97, 101, 103,
+                     107, 109, 113, 127, 131, 137, 139,
+                     149, 151, 157, 163, 167, 173, 179,
+                     181, 191, 193, 197, 199, 211, 223,
+                     227, 229, 233, 239, 241, 251, 257,
+                     263, 269, 271, 277, 281, 283, 293,
+                     307, 311, 313, 317, 331, 337, 347, 349]
+
+def binary_exponentiation(base, power, mod):
+    result = 1
+    while (power):
+        if (power & 1):
+            if (mod != -1):
+                result = (result * base) % mod
+            else:
+                result *= base
+        if (mod != -1):
+            base = (base * base) % mod
+        else:
+            base *= base
+        power >>= 1
+    return result

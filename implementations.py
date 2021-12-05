@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 # 
 def dft(x):
@@ -169,158 +170,38 @@ def xgcd(a, b):
 
     return a, old_x, old_y
 
-def chooseE(totient):
+def horner(a, x):
+    result = 0
+    for i in range(len(a)-1, -1, -1):
+        result = a[i] + (x * result)
+    return result
+
+def getPvForm(A):
+    pv = []
+    for x in range(1, len(A) + 1):
+        y = horner(A, x)
+        pv.append((x, y))
+    return pv
+
+def polynomial_multiplication(P, Q):
     """
-    Chooses a random number, 1 < e < totient, and checks whether or not it is 
-    coprime with the totient, that is, gcd(e, totient) = 1
+        Brute force multiplication
     """
-    while (True):
-        e = random.randrange(2, totient)
+    m = len(P)
+    n = len(Q)
+    result = [0]*(m+n-1)
+    for i in range(m):
+        for j in range(n):
+            result[i+j] += P[i]*Q[j]
+    return result
 
-        if (gcd(e, totient) == 1):
-            return e
-
-def chooseKeys():
-    """
-    Selects two random prime numbers from a list of prime numbers which has 
-    values that go up to 100k. It creates a text file and stores the two 
-    numbers there where they can be used later. Using the prime numbers, 
-    it also computes and stores the public and private keys in two separate 
-    files.
-    """
-
-    # choose two random numbers within the range of lines where 
-    # the prime numbers are not too small and not too big
-    rand1 = random.randint(100, 300)
-    rand2 = random.randint(100, 300)
-
-    # store the txt file of prime numbers in a python list
-    fo = open('primes-to-100k.txt', 'r')
-    lines = fo.read().splitlines()
-    fo.close()
-
-    # store our prime numbers in these variables
-    prime1 = int(lines[rand1])
-    prime2 = int(lines[rand2])
-
-    # compute n, totient, e
-    n = prime1 * prime2
-    totient = (prime1 - 1) * (prime2 - 1)
-    e = chooseE(totient)
-
-    # compute d, 1 < d < totient such that ed = 1 (mod totient)
-    # e and d are inverses (mod totient)
-    gcd, x, y = xgcd(e, totient)
-
-    # make sure d is positive
-    if (x < 0):
-        d = x + totient
-    else:
-        d = x
-
-    # write the public keys n and e to a file
-    f_public = open('public_keys.txt', 'w')
-    f_public.write(str(n) + '\n')
-    f_public.write(str(e) + '\n')
-    f_public.close()
-
-    f_private = open('private_keys.txt', 'w')
-    f_private.write(str(n) + '\n')
-    f_private.write(str(d) + '\n')
-    f_private.close()
-    
-    return n, e, d
-
-def encrypt(message, file_name = 'public_keys.txt', block_size = 2):
-    """
-    Encrypts a message (string) by raising each character's ASCII value to the 
-    power of e and taking the modulus of n. Returns a string of numbers.
-    file_name refers to file where the public key is located. If a file is not 
-    provided, it assumes that we are encrypting the message using our own 
-    public keys. Otherwise, it can use someone else's public key, which is 
-    stored in a different file.
-    block_size refers to how many characters make up one group of numbers in 
-    each index of encrypted_blocks.
-    """
-
-    try:
-        fo = open(file_name, 'r')
-
-    # check for the possibility that the user tries to encrypt something
-    # using a public key that is not found
-    except FileNotFoundError:
-        print('That file is not found.')
-    else:
-        n = int(fo.readline())
-        e = int(fo.readline())
-        fo.close()
-
-        encrypted_blocks = []
-        ciphertext = -1
-
-        if (len(message) > 0):
-            # initialize ciphertext to the ASCII of the first character of message
-            ciphertext = ord(message[0])
-
-        for i in range(1, len(message)):
-            # add ciphertext to the list if the max block size is reached
-            # reset ciphertext so we can continue adding ASCII codes
-            if (i % block_size == 0):
-                encrypted_blocks.append(ciphertext)
-                ciphertext = 0
-
-            # multiply by 1000 to shift the digits over to the left by 3 places
-            # because ASCII codes are a max of 3 digits in decimal
-            ciphertext = ciphertext * 1000 + ord(message[i])
-
-        # add the last block to the list
-        encrypted_blocks.append(ciphertext)
-
-        # encrypt all of the numbers by taking it to the power of e
-        # and modding it by n
-        for i in range(len(encrypted_blocks)):
-            encrypted_blocks[i] = str((encrypted_blocks[i]**e) % n)
-
-        # create a string from the numbers
-        encrypted_message = " ".join(encrypted_blocks)
-
-        return encrypted_message
-
-def decrypt(blocks, block_size = 2):
-    """
-    Decrypts a string of numbers by raising each number to the power of d and 
-    taking the modulus of n. Returns the message as a string.
-    block_size refers to how many characters make up one group of numbers in
-    each index of blocks.
-    """
-
-    fo = open('private_keys.txt', 'r')
-    n = int(fo.readline())
-    d = int(fo.readline())
-    fo.close()
-
-    # turns the string into a list of ints
-    list_blocks = blocks.split(' ')
-    int_blocks = []
-
-    for s in list_blocks:
-        int_blocks.append(int(s))
-
-    message = ""
-
-    # converts each int in the list to block_size number of characters
-    # by default, each int represents two characters
-    for i in range(len(int_blocks)):
-        # decrypt all of the numbers by taking it to the power of d
-        # and modding it by n
-        int_blocks[i] = (int_blocks[i]**d) % n
-        
-        tmp = ""
-        # take apart each block into its ASCII codes for each character
-        # and store it in the message string
-        for c in range(block_size):
-            tmp = chr(int_blocks[i] % 1000) + tmp
-            int_blocks[i] //= 1000
-        message += tmp
-
-    return message
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
