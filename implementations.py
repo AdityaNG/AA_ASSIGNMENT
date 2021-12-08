@@ -84,13 +84,13 @@ def elementry_multi(A,B):
         B: b0 b1 b2 ... b(m-2) b(m-1)
         Returns:
         C: c0 c1 c2 ... c(m+n-2) c(m+n-1) which is A*B (convolution)'''
-    n = len(a)
-    m = len(b)
+    n = len(A)
+    m = len(B)
     l = m + n    #The number of values in C 
     C = [0 for i in range(l)]
     for i in range(n):
         for j in range(m):
-            C[m+n] += A[i]*B[j]
+            C[i+j] += A[i]*B[j]
         
     return C
     
